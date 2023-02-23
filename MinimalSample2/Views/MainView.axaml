@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:MinimalSample2.ViewModels"
+			 xmlns:local="clr-namespace:MinimalSample2"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="MinimalSample2.Views.MainView"
+             Foreground="White"
+             Background="#171C2C"
+			 x:DataType="viewModels:MainViewModel"
+			 x:CompileBindings="True">
+  <Design.DataContext>
+    <!-- This only sets the DataContext for the previewer in an IDE,
+         to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+    <viewModels:MainViewModel />
+  </Design.DataContext>
+
+	<UserControl.Resources>
+		<local:ConditionalColorConverter x:Key="conditionalColorConverter"/>
+	</UserControl.Resources>
+	
+
+	<DockPanel Margin="20">
+		<StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="20" HorizontalAlignment="Center">
+			<TextBlock Text="{Binding CalculationProgress}" VerticalAlignment="Center"/>
+		</StackPanel>
+		<ItemsControl Items="{Binding NumberItems}" DockPanel.Dock="Bottom">
+			<ItemsControl.ItemsPanel>
+				<ItemsPanelTemplate>
+					<WrapPanel/>
+				</ItemsPanelTemplate>
+			</ItemsControl.ItemsPanel>
+			<ItemsControl.ItemTemplate>
+				<DataTemplate>
+					<Panel Width="30" Height="30" Name="{Binding Name}">
+						<Ellipse Width="25" Height="25" ToolTip.Tip="{Binding Number}"
+								 Fill="{Binding IsPrime, Converter={StaticResource conditionalColorConverter}}"/>
+					</Panel>
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+	</DockPanel>
+</UserControl>
