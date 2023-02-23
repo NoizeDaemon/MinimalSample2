@@ -1,4 +1,5 @@
-﻿using Avalonia.Threading;
+﻿using AsyncAwaitBestPractices;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DynamicData;
@@ -35,7 +36,7 @@ namespace MinimalSample2.ViewModels
 
         private List<int> primeList = new();
 
-        private readonly SourceCache<NumberItem, int> numberItemsSourceCache = new(NumberItem => NumberItem.Number);
+        //private readonly SourceCache<NumberItem, int> numberItemsSourceCache = new(NumberItem => NumberItem.Number);
         private List<NumberItem> bufferList = new();
         private readonly SourceCache<NumberItem, int> numberItemsDisplayCache = new(NumberItem => NumberItem.Number);
         private readonly ReadOnlyObservableCollection<NumberItem> numberItems;
@@ -60,8 +61,7 @@ namespace MinimalSample2.ViewModels
 
             progress.ProgressChanged += (sender, newItems) => OnProgressChanged(sender, newItems);
 
-            Task.Run(async () => await Calculate(progress));
-            //Dispatcher.UIThread.InvokeAsync( () => Calculate(progress), DispatcherPriority.ContextIdle);
+            Calculate(progress).SafeFireAndForget(onException: ex => Console.WriteLine(ex));
         }
 
         [RelayCommand]
@@ -119,6 +119,10 @@ namespace MinimalSample2.ViewModels
 
         async Task Calculate(Progress<IList<NumberItem>> progress)
         {
+            await Task.Yield();
+
+            SourceCache<NumberItem, int> numberItemsSourceCache = new(NumberItem => NumberItem.Number);
+
             int currentNumbers = 2;
 
             numberItemsSourceCache.AddOrUpdate(new NumberItem
