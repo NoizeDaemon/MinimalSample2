@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -20,18 +21,34 @@ namespace MinimalSample2.ViewModels
         [ObservableProperty]
         private int calculationProgress = 2;
 
+        [ObservableProperty]
+        bool isUpdating = false;
+
+        [ObservableProperty]
+        bool isAnimating = true;
+
+        [ObservableProperty]
+        private int upperLimit;
+
         private int batchSize = 10000;
-        private Progress<int> progress = new Progress<int>();
+        private Progress<IList<NumberItem>> progress = new Progress<IList<NumberItem>>();
 
         private List<int> primeList = new();
 
         private readonly SourceCache<NumberItem, int> numberItemsSourceCache = new(NumberItem => NumberItem.Number);
+        private List<NumberItem> bufferList = new();
+        private readonly SourceCache<NumberItem, int> numberItemsDisplayCache = new(NumberItem => NumberItem.Number);
         private readonly ReadOnlyObservableCollection<NumberItem> numberItems;
         public ReadOnlyObservableCollection<NumberItem> NumberItems => numberItems;
 
+        //private ObservableCollection<NumberItem> numberItems = new();
+        //public ObservableCollection<NumberItem> NumberItems = new();
+
+        
+
         public MainViewModel()
         {
-            _ = numberItemsSourceCache
+            _ = numberItemsDisplayCache
                     .Connect()
                     //.AutoRefresh(new TimeSpan((long)1000))
                     .ObserveOn(RxApp.MainThreadScheduler)
@@ -41,19 +58,66 @@ namespace MinimalSample2.ViewModels
 
             primeList.Add(2);
 
-            progress.ProgressChanged += (sender, currentNumbers) => OnProgressChanged(sender, currentNumbers);
+            progress.ProgressChanged += (sender, newItems) => OnProgressChanged(sender, newItems);
 
-            Task.Run(() => Calculate(progress));
-            //Dispatcher.UIThread.InvokeAsync( () => Calculate(progress), DispatcherPriority.Background);
+            Task.Run(async () => await Calculate(progress));
+            //Dispatcher.UIThread.InvokeAsync( () => Calculate(progress), DispatcherPriority.ContextIdle);
         }
 
-        void OnProgressChanged(object? sender, int currentNumbers)
+        [RelayCommand]
+        private async void StartDisplay()
         {
-            CalculationProgress = currentNumbers;
-            numberItemsSourceCache.Refresh();
+            IsUpdating = true;
+            await Dispatcher.UIThread.InvokeAsync(() => UpdateNumberItems(UpperLimit, IsAnimating));
+            IsUpdating = false;
         }
 
-        Task Calculate(Progress<int> progress)
+        private async Task UpdateNumberItems(int upperLimit, bool isAnimating)
+        {
+            int currentlyDisplayed = numberItemsDisplayCache.Count;
+            bool isAdding = upperLimit > currentlyDisplayed;
+
+            if (isAnimating)
+            {
+                if (isAdding)
+                {
+                    for (int i = currentlyDisplayed; i < upperLimit; i++)
+                    {
+                        numberItemsDisplayCache.AddOrUpdate(bufferList[i]);
+                        await Task.Delay(10);
+                    }
+                }
+                else
+                {
+                    for (int i = currentlyDisplayed; i > upperLimit; i--)
+                    {
+                        numberItemsDisplayCache.RemoveKey(i);
+                        await Task.Delay(10);
+                    }
+                }
+            }
+            else
+            {
+                if (isAdding)
+                {
+                    numberItemsDisplayCache.AddOrUpdate(bufferList.GetRange(currentlyDisplayed, UpperLimit - currentlyDisplayed));
+                }
+                else
+                {
+                    numberItemsDisplayCache.RemoveKeys(numberItemsDisplayCache.Keys.Where(x => x > UpperLimit));
+                }
+                
+            }
+        }
+
+        void OnProgressChanged(object? sender, IList<NumberItem> newItems)
+        {
+            CalculationProgress = newItems.Count;
+            bufferList = new();
+            bufferList.AddRange(newItems);
+        }
+
+        async Task Calculate(Progress<IList<NumberItem>> progress)
         {
             int currentNumbers = 2;
 
@@ -81,10 +145,9 @@ namespace MinimalSample2.ViewModels
                     }
                 });
                 currentNumbers += batchSize;
-                ((IProgress<int>)progress).Report(currentNumbers);
+                ((IProgress<IList<NumberItem>>)progress).Report((IList<NumberItem>)numberItemsSourceCache.Items);
                 
             }
-            return Task.CompletedTask;
         }
 
         bool IsPrimeCheck(int n)

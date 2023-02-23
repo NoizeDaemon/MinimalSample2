@@ -19,11 +19,21 @@
 	<UserControl.Resources>
 		<local:ConditionalColorConverter x:Key="conditionalColorConverter"/>
 	</UserControl.Resources>
+
+	<UserControl.Styles>
+	</UserControl.Styles>
 	
 
 	<DockPanel Margin="20">
 		<StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="20" HorizontalAlignment="Center">
-			<TextBlock Text="{Binding CalculationProgress}" VerticalAlignment="Center"/>
+			<!--<TextBlock Text="{Binding CalculationProgress}" VerticalAlignment="Center"/>-->
+			<TextBlock Text="Find all prime numbers up to:" VerticalAlignment="Center"/>
+			
+			<NumericUpDown x:Name="upperLimitInput" ShowButtonSpinner="False" ClipValueToMinMax="True" Minimum="10" Maximum="{Binding CalculationProgress}"
+						   AllowSpin="False" Value="{Binding UpperLimit, Mode=OneWayToSource}"/>
+			
+			<Button x:Name="goBtn" Content="Calculate!" Command="{Binding StartDisplayCommand}" IsEnabled="{Binding !IsUpdating}"/>
+			<CheckBox IsChecked="{Binding IsAnimating}">Animate</CheckBox>
 		</StackPanel>
 		<ItemsControl Items="{Binding NumberItems}" DockPanel.Dock="Bottom">
 			<ItemsControl.ItemsPanel>
