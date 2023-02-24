@@ -119,39 +119,41 @@ namespace MinimalSample2.ViewModels
 
         async Task Calculate(Progress<IList<NumberItem>> progress)
         {
-            await Task.Yield();
-
-            SourceCache<NumberItem, int> numberItemsSourceCache = new(NumberItem => NumberItem.Number);
-
-            int currentNumbers = 2;
-
-            numberItemsSourceCache.AddOrUpdate(new NumberItem
+            await Task.Run(() =>
             {
-                Name = "N1",
-                Number = 1,
-                IsPrime = false
-            });
+                SourceCache<NumberItem, int> numberItemsSourceCache = new(NumberItem => NumberItem.Number);
 
-            while (currentNumbers <= 50000)
-            {
-                numberItemsSourceCache.Edit(innerCache =>
+                int currentNumbers = 2;
+
+                numberItemsSourceCache.AddOrUpdate(new NumberItem
                 {
-                    for (int i = currentNumbers; i <= currentNumbers + batchSize; i++)
-                    {
-                        innerCache.AddOrUpdate(new NumberItem
-                        {
-                            Name = "N" + i,
-                            Number = i,
-                            IsPrime = IsPrimeCheck(i)
-                        });
-
-                        if (i is 50000) break;
-                    }
+                    Name = "N1",
+                    Number = 1,
+                    IsPrime = false
                 });
-                currentNumbers += batchSize;
-                ((IProgress<IList<NumberItem>>)progress).Report((IList<NumberItem>)numberItemsSourceCache.Items);
-                
-            }
+
+                while (currentNumbers <= int.MaxValue)
+                {
+                    int batchLimit = Math.Clamp(currentNumbers + batchSize, 0, int.MaxValue);
+                    numberItemsSourceCache.Edit(innerCache =>
+                    {
+                        for (int i = currentNumbers; i <= currentNumbers + batchLimit; i++)
+                        {
+                            innerCache.AddOrUpdate(new NumberItem
+                            {
+                                Name = "N" + i,
+                                Number = i,
+                                IsPrime = IsPrimeCheck(i)
+                            });
+
+                            if (i is int.MaxValue) break;
+                        }
+                    });
+                    currentNumbers = batchLimit;
+                    ((IProgress<IList<NumberItem>>)progress).Report((IList<NumberItem>)numberItemsSourceCache.Items);
+
+                }
+            });
         }
 
         bool IsPrimeCheck(int n)
@@ -170,7 +172,7 @@ namespace MinimalSample2.ViewModels
                 }
             }
             primeList.Add(n);
-            Debug.WriteLine(n);
+            //Debug.WriteLine(n);
             return true;
         }
     }
